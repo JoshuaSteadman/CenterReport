@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Report Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .highlight {
+            background-color: #ffcccc;
+        }
+        #debugLog {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Center Report Viewer</h1>
+    <input type="file" id="csvFile" accept=".csv">
+    <div id="tableContainer"></div>
+    <div id="debugLog"></div>
+
+    <script>
+        function log(message) {
+            console.log(message);
+            const debugLog = document.getElementById('debugLog');
+            debugLog.textContent += message + '\n';
+        }
+
+        document.getElementById('csvFile').addEventListener('change', handleFileSelect);
+
+        function handleFileSelect(event) {
+            log('File selected');
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = handleFileLoad;
+            reader.onerror = (error) => log('Error reading file: ' + error);
+            reader.readAsText(file);
+        }
+
+        function handleFileLoad(event) {
+            log('File loaded');
+            const csvData = event.target.result;
+            log(`CSV data length: ${csvData.length} characters`);
+            const parsedData = parseCSV(csvData);
+            log(`Parsed data: ${parsedData.length} rows`);
+            if (parsedData.length > 0) {
+                const sortedData = sortDataByStopsCompleted(parsedData);
+                log('Data sorted');
+                displayTable(sortedData);
+            } else {
+                log('No valid data found in the CSV file');
+                alert("No valid data found in the CSV file.");
+            }
+        }
+
+        function parseCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim() !== '');
+            log(`Number of non-empty lines: ${lines.length}`);
+            if (lines.length === 0) return [];
+
+            // Detect delimiter
+            const possibleDelimiters = [',', ';', '\t'];
+            let delimiter = ',';
+            let maxFields = 0;
+            possibleDelimiters.forEach(del => {
+                const fields = lines[0].split(del).length;
+                if (fields > maxFields) {
+                    maxFields = fields;
+                    delimiter = del;
+                }
+            });
+            log(`Detected delimiter: "${delimiter}"`);
+
+            const headers = lines[0].split(delimiter).map(header => header.trim());
+            log(`Headers: ${headers.join(', ')}`);
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = splitCSVRow(lines[i], delimiter);
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index].trim();
+                    });
+                    data.push(row);
+                } else {
+                    log(`Skipping line ${i + 1}: incorrect number of values (${values.length} instead of ${headers.length})`);
+                }
+            }
+
+            return data;
+        }
+
+        function splitCSVRow(row, delimiter) {
+            const values = [];
+            let currentValue = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < row.length; i++) {
+                const char = row[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === delimiter && !inQuotes) {
+                    values.push(currentValue);
+                    currentValue = '';
+                } else {
+                    currentValue += char;
+                }
+            }
+            values.push(currentValue);
+            return values;
+        }
+
+        function sortDataByStopsCompleted(data) {
+            return data.sort((a, b) => {
+                const aStopsCompleted = parseFloat(a['Stops Completed']) || 0;
+                const bStopsCompleted = parseFloat(b['Stops Completed']) || 0;
+                return aStopsCompleted - bStopsCompleted;
+            });
+        }
+
+        function displayTable(data) {
+            log('Displaying table');
+            if (data.length === 0) {
+                document.getElementById('tableContainer').innerHTML = "No valid data to display.";
+                return;
+            }
+
+            const table = document.createElement('table');
+            const headers = Object.keys(data[0]);
+
+            // Create table header
+            const headerRow = table.insertRow();
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                headerRow.appendChild(th);
+            });
+
+            // Create table rows
+            data.forEach(row => {
+                const tr = table.insertRow();
+                const stopsCompleted = parseFloat(row['Stops Completed']) || 0;
+                if (stopsCompleted < 100) {
+                    tr.classList.add('highlight');
+                }
+
+                headers.forEach(header => {
+                    const td = tr.insertCell();
+                    td.textContent = row[header] || '';
+                });
+            });
+
+            const tableContainer = document.getElementById('tableContainer');
+            tableContainer.innerHTML = '';
+            tableContainer.appendChild(table);
+            log('Table displayed');
+        }
+    </script>
+</body>
+</html>
