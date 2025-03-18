@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>USFoods Center Report Viewer</title>
+    <title>USFoods Center Report Viewer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,6 +75,7 @@
             border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin: 5px;
         }
         .button:hover {
             background-color: #45a049;
@@ -98,11 +99,29 @@
                 <label class="button" for="fileElem">Select a file</label>
             </form>
         </div>
+        <button id="removeLocalDrivers" class="button">Remove Local Drivers</button>
         <div id="tableContainer"></div>
         <div id="debugLog"></div>
     </div>
 
     <script>
+        const localDrivers = new Set([
+            "James, John", "Evola, Lewis", "Rosario, Thomas", "Gerena, Edgardo",
+            "Veras De Los Santos, Jeremy", "Miranda, Kevin", "Gomes, Brian",
+            "Jordan, Justin", "Griffin, David", "McKnight, Anthony", "Mcknight, Anthony",
+            "Reynolds, Oshane", "Longley, Michael", "Luna, Lenn", "Archambault, Aaro",
+            "Fishman, Andrew", "Diaz, Juan", "Ramirez, Christian", "Hyslop, Michael",
+            "Claiborne, John", "Diaz-Heredia, Ramser", "Jones, General", "Thomas, Calvin",
+            "Smith, Troy", "Anguita, Estefano", "Jeffers, Justin", "Lugo, Abner",
+            "Hunt, Gary", "Joseph, Dwayne", "Gendron, Harold", "Butler, Naseem",
+            "Ramos, April", "Spence, Shane", "Archambault, Aaron", "Luna, Lenny",
+            "Fishman, Ryan", "Sanderson, Sean", "Robbins, David", "Rothe, Roger",
+            "Moore, Donnie", "Morency, Junior", "Ovalles, Ismael", "Harrison, Jashon",
+            "Gomes, Brian", "Williams, Don", "Francois, Mike", "Carrigan, Sean",
+            "Ortiz, Mislael", "Roderick, Charles", "Roy, Brian", "Antonetty, Wilfredo",
+            "Campbell, Oliver", "Barber, Roy"
+        ]);
+
         function log(message) {
             console.log(message);
             const debugLog = document.getElementById('debugLog');
@@ -110,6 +129,7 @@
         }
 
         let dropArea = document.getElementById("drop-area");
+        let removeButton = document.getElementById("removeLocalDrivers");
 
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             dropArea.addEventListener(eventName, preventDefaults, false);
@@ -125,6 +145,7 @@
 
         dropArea.addEventListener('drop', handleDrop, false);
         dropArea.addEventListener('keydown', handleKeyDown, false);
+        removeButton.addEventListener('click', removeLocalDrivers);
 
         function preventDefaults(e) {
             e.preventDefault();
@@ -277,6 +298,42 @@
             tableContainer.innerHTML = '';
             tableContainer.appendChild(table);
             log('Table displayed');
+        }
+
+        function removeLocalDrivers() {
+            const tableContainer = document.getElementById('tableContainer');
+            const table = tableContainer.querySelector('table');
+            
+            if (!table) {
+                log('No table found to filter');
+                alert('Please upload a CSV file first');
+                return;
+            }
+
+            const headers = Array.from(table.rows[0].cells).map(cell => cell.textContent);
+            const driverIndex = headers.indexOf('Driver');
+            
+            if (driverIndex === -1) {
+                log('No "Driver" column found in table');
+                alert('No "Driver" column found in the table');
+                return;
+            }
+
+            const rows = Array.from(table.rows).slice(1); // Skip header row
+            let removedCount = 0;
+
+            rows.forEach(row => {
+                const driverName = row.cells[driverIndex].textContent.trim();
+                if (localDrivers.has(driverName)) {
+                    row.remove();
+                    removedCount++;
+                }
+            });
+
+            log(`Removed ${removedCount} local drivers from the table`);
+            if (removedCount === 0) {
+                alert('No local drivers found in the current table');
+            }
         }
     </script>
 </body>
